@@ -16,7 +16,7 @@ class Edgeserver:
         self.buffer = {}
         self.participated_sample = {}
         self.model=create(dataset,model,loss,metrics,lr,image_shape) 
-        self.test_avg_acc=[]                            # calculated using clients      
+        self.test_avg_acc=[]                                
 # 2.
     def aggregate(self,comm_r,num_agg,folder):
         sample_number=[]
