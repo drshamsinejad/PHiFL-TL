@@ -13,17 +13,13 @@ import gc
 
 
 def get_dataset(dataset,model):
-        
     if dataset=='mnist':
         if model=='mlp':
             X_train,Y_train,X_test,Y_test=get_mnist_mlp()
-            
         elif model in ('cnn1','cnn2','cnn3'):
             X_train ,Y_train,X_test,Y_test=get_mnist_cnn()
-            
     if dataset=='cifar10':
-        X_train ,Y_train,X_test,Y_test=get_cifar10()
-                
+        X_train ,Y_train,X_test,Y_test=get_cifar10()  
     return X_train,Y_train,X_test,Y_test
 
 def get_mnist_mlp():            
@@ -45,7 +41,7 @@ def get_mnist_cnn():
     X_test=X_test/255.0      
     Y_test=to_categorical(Y_test,num_classes=10) 
     return X_train,Y_train,X_test,Y_test
-    
+        
 def plot_mnist(idx):
     X,Y,_,_=get_mnist()                  # X is list,Y is array
     X=np.array(X).reshape(60000,28,28)
@@ -64,42 +60,7 @@ def get_cifar10():
     X_test=X_test/255.0      
     Y_test=to_categorical(Y_test,num_classes=10) 
     return X_train,Y_train,X_test,Y_test
-
-def get_cifar10_batch(filename):                 
-    """
-    Load a single batch of CIFAR from the given file
-    """
-    with open(filename, 'rb') as f:
-        dic = pickle.load(f , encoding='latin1')
-        X = dic['data']                        # X : array 10000*3072= 0:1024 red channel 32*32,1024:2048 green channel
-                                               #   ,2048:3072: blue channel
-        Y = dic['labels']                       
-        #X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype('float64')   #for cnn
-        Y = np.array(Y)
-    return X, Y       
-
-def plot_cifar10(idx):
-    """
-    important: 
-    X: array 50000*3072
-    """
-    X,Y,_,_=get_cifar10()          
-    X=X.reshape(50000,3,32,32)           
-    
-    path=r'data\cifar-10-batches-py\batches.meta'
-    with open(path , 'rb') as f:
-        dic=pickle.load(f,encoding="latin1")
-        label_names=dic['label_names']
         
-    red=X[idx][0]
-    green=X[idx][1]
-    blue=X[idx][2]
-    image=np.dstack((red,green,blue))
-    fig = plt.figure(figsize=(3,3))
-    ax = fig.add_subplot(111)
-    ax.imshow(image,interpolation='bicubic')
-    ax.set_title('Category ={}'.format(label_names[Y[idx]]),fontsize =15)
-
 # 1.
 def iid_equal_size_split(data,label,num_parties,flag=None):                             
     num_samples_party=int(len(data)/num_parties)             
@@ -129,7 +90,7 @@ def iid_nequal_size_split(data,label,num_parties,beta=0.9):
     min_size_of_parties=0
     while min_size_of_parties<50:                   
         p=np.random.dirichlet(np.repeat(beta,num_parties))          # p.sum()is 1  
-        size_parties=np.random.multinomial(all_num_samples, p)       # a array of different sizes for parties
+        size_parties=np.random.multinomial(all_num_samples, p)      
         min_size_of_parties=np.min(size_parties)
     idxs=list(range(len(data)))
     for i,size in enumerate(size_parties):
@@ -140,7 +101,7 @@ def iid_nequal_size_split(data,label,num_parties,beta=0.9):
 
 # 3.
 """         label distribution skew -->  distribution-based label imbalanced         """
-def niid_labeldis_split(data,label,num_clients,flag,beta):     # 💡  
+def niid_labeldis_split(data,label,num_clients,flag,beta):    
     """
     each client has a proportion of the samples of each label(Dirichlet distribution)
     The size of the local data set is not equal
@@ -155,7 +116,7 @@ def niid_labeldis_split(data,label,num_clients,flag,beta):     # 💡
             k_idxs=np.where(idxs==k)[0]
             np.random.shuffle(k_idxs)
             min_size_labels=0
-            while min_size_labels<5:     # 💡
+            while min_size_labels<5:   
                 p=np.random.dirichlet(np.repeat(beta,num_clients))
                 p=np.random.multinomial(len(k_idxs),p)
                 min_size_labels=np.min(p)
@@ -173,6 +134,7 @@ def niid_labeldis_split(data,label,num_clients,flag,beta):     # 💡
             partitions[i]=tf.data.Dataset.from_tensor_slices((data[d_idxs],label[d_idxs]))
             idxs=list(set(idxs)-set(d_idxs)) 
     return partitions
+        
 # 4.
 """         label distribution skew -->  quantity-based label imbalanced      """    
 def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_parties,labels_list,k,flag=None): 
@@ -359,7 +321,7 @@ def k_niid_equal_size_split_1(train_data,train_label,test_data,test_label,num_pa
             te_data[i]=test_data[test_partition_idxs[i]]
             te_label[i]=test_label[test_partition_idxs[i]]
         return tr_data,tr_label,te_data,te_label,party_labels_list 
-
+            
 # 7.
 def get_classes(data_label):
     l=[0]*10
