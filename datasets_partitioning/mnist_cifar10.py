@@ -137,7 +137,7 @@ def niid_labeldis_split(data,label,num_clients,flag,beta):
         
 # 4.
 """         label distribution skew -->  quantity-based label imbalanced      """    
-def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_parties,labels_list,k,flag=None): 
+def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_parties,labels_list,k): 
     
     """ k: number of lables for each party """    
     labels_index=np.arange(len(labels_list))
@@ -209,18 +209,7 @@ def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_part
                                                                     train_label[train_partition_idxs[i]]))
             test_partitions[i]=tf.data.Dataset.from_tensor_slices((test_data[test_partition_idxs[i]],
                                                                     test_label[test_partition_idxs[i]]))
-        return train_partitions,test_partitions
-    else:
-        tr_data=[0]*num_parties
-        tr_label=[0]*num_parties
-        te_data=[0]*num_parties
-        te_label=[0]*num_parties
-        for i in range(num_parties):
-            tr_data[i]=train_data[train_partition_idxs[i]]
-            tr_label[i]=train_label[train_partition_idxs[i]]
-            te_data[i]=test_data[test_partition_idxs[i]]
-            te_label[i]=test_label[test_partition_idxs[i]]
-        return tr_data,tr_label,te_data,te_label,party_labels_list
+        return train_partitions,test_partitions,party_labels_list
 # 5.
 def random_edges(num_edges,num_clients):
     #randomly select clientsfor assign clients to edgesever 
