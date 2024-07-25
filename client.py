@@ -6,9 +6,6 @@ import gc
 import tracemalloc
 import copy
 import tensorflow as tf 
-#from sklearn.preprocessing import LabelBinarizer    ####
-#from sklearn.metrics import classification_report    ###
-
 
 class Client:    
 
