@@ -76,23 +76,38 @@ def plot_cifar10(idx):
     
 #                                   Partitioning Functions            
 # =============================================================================================================
-def iid_equal_size_split(train_data,train_label,test_data,test_label,num_parties):  
-    train_size=int(len(train_data)/num_parties)
-    train_partitions=[0]*num_parties
+train_size=int(len(train_data)/num_parties)
     train_idx=list(range(len(train_data)))
     test_size=int(len(test_data)/num_parties)             
-    test_partitions=[0]*num_parties
     test_idx=list(range(len(test_data)))
-    
-    for i in range(num_parties):
-        indxs=np.random.choice(train_idx,train_size,replace=False)
-        train_partitions[i]=tf.data.Dataset.from_tensor_slices((train_data[indxs],train_label[indxs]))
-        train_idx=list(set(train_idx)-set(indxs)) 
-    for i in range(num_parties):
-        indxs=np.random.choice(test_idx,test_size,replace=False)
-        test_partitions[i]=tf.data.Dataset.from_tensor_slices((test_data[indxs],test_label[indxs]))
-        test_idx=list(set(test_idx)-set(indxs))                    
-    return train_partitions,test_partitions
+    if flag==None:
+        train_partitions=[0]*num_parties
+        test_partitions=[0]*num_parties
+        for i in range(num_parties):
+            indxs=np.random.choice(train_idx,train_size,replace=False)
+            train_partitions[i]=tf.data.Dataset.from_tensor_slices((train_data[indxs],train_label[indxs]))
+            train_idx=list(set(train_idx)-set(indxs)) 
+        for i in range(num_parties):
+            indxs=np.random.choice(test_idx,test_size,replace=False)
+            test_partitions[i]=tf.data.Dataset.from_tensor_slices((test_data[indxs],test_label[indxs]))
+            test_idx=list(set(test_idx)-set(indxs))                    
+        return train_partitions,test_partitions
+    else:
+        train_data_partitions=[0]*num_parties
+        train_label_partitions=[0]*num_parties
+        test_data_partitions=[0]*num_parties
+        test_label_partitions=[0]*num_parties
+        for i in range(num_parties):
+            indxs=np.random.choice(train_idx,train_size,replace=False)
+            train_data_partitions[i]=train_data[indxs]
+            train_label_partitions[i]=train_label[indxs]
+            train_idx=list(set(train_idx)-set(indxs))  
+        for i in range(num_parties):
+            indxs=np.random.choice(test_idx,test_size,replace=False)
+            test_data_partitions[i]=test_data[indxs]
+            test_label_partitions[i]=test_label[indxs]
+            test_idx=list(set(test_idx)-set(indxs))
+        return train_data_partitions,train_label_partitions,test_data_partitions,test_label_partitions
 
 """         quantity skew         """                   
 def iid_nequal_size_split(train_data,train_label,test_data,test_label,num_parties,beta=0.9):                     
@@ -117,46 +132,43 @@ def iid_nequal_size_split(train_data,train_label,test_data,test_label,num_partie
         test_partitions[i]=tf.data.Dataset.from_tensor_slices((test_data[indxs],test_label[indxs]))
         test_idx=list(set(test_idx)-set(indxs)) 
     return train_partitions,test_partitions
-
+    
 """         label distribution skew -->  distribution-based label imbalanced         """
-def niid_labeldis_split(data,label,num_clients,flag,beta):     # 💡  
-    """
-    each client has a proportion of the samples of each label(Dirichlet distribution)
-    The size of the local data set is not equal
-    """ 
-    num_labels=10                 
-    data_size=int(len(data)/num_clients)
-    partitions=[0]*num_clients
-    partitions_idxs=[[] for _ in range(num_clients)]
-    if flag=='train':
-        idxs=np.array([np.argmax(label[idx]) for idx in range(len(label))])
-        for k in range(num_labels):
-            k_idxs=np.where(idxs==k)[0]
-            np.random.shuffle(k_idxs)
-            min_size_labels=0
-            while min_size_labels<5:     # 💡
-                p=np.random.dirichlet(np.repeat(beta,num_clients))
-                p=np.random.multinomial(len(k_idxs),p)
-                min_size_labels=np.min(p)
-            for i,size in enumerate(p):
-                d_idxs=np.random.choice(k_idxs,size,replace=False)
-                partitions_idxs[i].extend(d_idxs)
-                k_idxs=list(set(k_idxs)-set(d_idxs))
-        for i in range(num_clients):
-            partitions[i]=tf.data.Dataset.from_tensor_slices((data[partitions_idxs[i]],label[partitions_idxs[i]]))
-
-    else:
-        idxs=list(range(len(data)))
-        for i in range(num_clients):
-            d_idxs=np.random.choice(idxs,data_size,replace=False)
-            partitions[i]=tf.data.Dataset.from_tensor_slices((data[d_idxs],label[d_idxs]))
-            idxs=list(set(idxs)-set(d_idxs)) 
-    return partitions
+def niid_labeldis_split(train_data,train_label,test_data,test_label,num_clients,beta):       
+    # each client has a proportion of the samples of each label(Dirichlet distribution)
+    # The size of the local data set is not equal
+    num_labels=10 
+    train_num_samples=len(train_data)
+    train_i=np.array([np.argmax(train_data[idx][1]) for idx in range(len(train_data))])
+    train_partitions=[0]*num_clients
+    train_partitions_idxs=[[] for _ in range(num_clients)]
+    for k in range(num_labels):
+        k_idx=np.where(train_i==k)[0]
+        np.random.shuffle(k_idx)
+        min_size_of_labels=0
+        while min_size_of_labels<10:    
+            p=np.random.dirichlet(np.repeat(beta,num_clients))
+            p=np.random.multinomial(len(k_idx),p)
+            min_size_of_labels=np.min(p)
+        for i,size in enumerate(p):
+            idxs=np.random.choice(k_idx,size,replace=False)
+            train_partitions_idxs[i].extend(idxs)
+            k_idx=list(set(k_idx)-set(idxs))
+    for i in range(num_clients):
+            train_partitions[i]=tf.data.Dataset.from_tensor_slices((train_data[train_partitions_idxs[i]],
+                                                                        train_label[train_partitions_idxs[i]]))
+    test_size=int(len(test_data)/num_clients)
+    test_i=list(range(len(test_data)))
+    test_partitions=[0]*num_clients
+    for i in range(num_clients):
+        idxs=np.random.choice(test_i,test_size,replace=False)
+        test_partitions[i]=tf.data.Dataset.from_tensor_slices((test_data[idxs],test_label[idxs]))
+        test_i=list(set(test_i)-set(idxs)) 
+    return train_partitions,test_partitions
 
 """         label distribution skew -->  quantity-based label imbalanced      """    
 def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_parties,labels_list,k,flag=None): 
-    
-    """ k: number of lables for each party """    
+    # k: number of lables for each party
     labels_index=np.arange(len(labels_list))
     times=[0]*len(labels_list) 
     party_labels_list=[] 
@@ -174,7 +186,7 @@ def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_part
                 z=1
         else:
             if len(zero_list)<k:
-                for idx in zero_list:           
+                for idx in zero_list:          
                     c.append(labels_list[idx])
                     times[idx]+=1
                 rest_labels_list=list(set(labels_index)-set(zero_list))
@@ -190,11 +202,9 @@ def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_part
                     times[idx]+=1
                 zero_list=list(np.where(np.array(times)==0)[0]) 
                 z=1
- 
         party_labels_list.append(c)
     train_i=[np.argmax(train_label[idx]) for idx in range(len(train_label))]
     test_i=[np.argmax(test_label[idx]) for idx in range(len(test_label))]
-
     train_partition_idxs=[[] for _ in range(num_parties)]
     test_partition_idxs=[[] for _ in range(num_parties)]
     train_idx_l=[]
@@ -238,7 +248,26 @@ def k_niid_equal_size_split(train_data,train_label,test_data,test_label,num_part
             te_data[i]=test_data[test_partition_idxs[i]]
             te_label[i]=test_label[test_partition_idxs[i]]
         return tr_data,tr_label,te_data,te_label,party_labels_list
-
+        
+def Gaussian_noise(train_data,test_data,original_std,idx,num_parties,mean=0):
+    """
+    for party idx :std = original_std*(idx/num_parties)
+    image data and noisy_image_data must be scaled in [0, 1] 
+    """
+    std=original_std*idx/num_parties 
+    noisy_train_list=[]
+    noisy_test_list=[]
+    noise=np.random.randn(*train_data[0].shape)*std+mean
+    for i in range(len(train_data)):
+        #noise=np.random.randn(*train_data[i].shape)*std+mean
+        train_noisy_data=np.clip(noise+train_data[i],0,1)
+        noisy_train_list.append(train_noisy_data)
+    for i in range(len(test_data)):
+        #noise=np.random.randn(*train_data[i].shape)*std+mean
+        test_noisy_data=np.clip(noise+test_data[i],0,1)
+        noisy_test_list.append(test_noisy_data)
+    return noisy_train_list,noisy_test_list
+    
 def random_edges(num_edges,num_clients):
     #randomly select clientsfor assign clients to edgesever 
     clients_per_edge=int(num_clients/num_edges)
@@ -254,106 +283,8 @@ def random_edges(num_edges,num_clients):
         print(f'be assigned to edgeserver_{edgeid+1}')
     return assigned_clients
 
-def k_niid_equal_size_split_1(train_data,train_label,test_data,test_label,num_parties,labels_list,k,flag=None): 
-    
-    """ k: number of lables for each party """
-
-    num_labels=len(labels_list)
-    times=[0]*num_labels    
-    party_labels_list=[] 
-    for i in range(num_parties):
-        c=[labels_list[i%num_labels]]
-        times[i%num_labels]+=1
-        j=1
-        if num_parties<num_labels:
-            diff=num_labels-num_parties 
-            d=0
-            multiple=1
-            while d<diff and j<k:
-                ii=i                               
-                idx=(ii%num_labels)+(multiple*num_parties)
-                if idx>len(labels_list)-1:
-                    break
-                c.append(labels_list[idx])
-                times[idx]+=1
-                d+=1
-                j+=1
-                multiple+=1
-                if (ii%num_labels)+(multiple*num_parties)>len(labels_list)-1:
-                    break            
-        while (j<k):
-            idx=random.randint(0,num_labels-1)              
-            if (labels_list[idx] not in c):
-                c.append(labels_list[idx])
-                times[idx]+=1
-                j+=1
-        party_labels_list.append(c)
-    train_i=[np.argmax(train_label[idx]) for idx in range(len(train_label))]
-    test_i=[np.argmax(test_label[idx]) for idx in range(len(test_label))]
-
-    train_partition_idxs=[0]*num_parties
-    test_partition_idxs=[0]*num_parties
-    train_idx_l=[]
-    test_idx_l=[]
-    for i,l in enumerate(labels_list):
-        for j,d in enumerate(train_i):
-            if d==l:
-                train_idx_l.append(j)
-        for j,d in enumerate(test_i):
-            if d==l:
-                test_idx_l.append(j)
-        #train_idx_l=np.where(train_i==l)[0]  
-        #test_idx_l=np.where(test_i==l)[0]          
-        np.random.shuffle(train_idx_l)
-        np.random.shuffle(test_idx_l)
-        train_split=np.array_split(train_idx_l,times[i])
-        test_split=np.array_split(test_idx_l,times[i])
-        index=0
-        for j in range(num_parties):
-            if l in party_labels_list[j]:
-                train_partition_idxs[j]=train_split[index]
-                test_partition_idxs[j]=test_split[index]               
-                index+=1
-        train_idx_l.clear()
-        test_idx_l.clear()
-        
-    if flag==None:
-        train_partitions=[0]*num_parties
-        test_partitions=[0]*num_parties
-        for i in range(num_parties):                                                                                                                                    
-            train_partitions[i]=tf.data.Dataset.from_tensor_slices((train_data[train_partition_idxs[i]],
-                                                                    train_label[train_partition_idxs[i]]))
-            test_partitions[i]=tf.data.Dataset.from_tensor_slices((test_data[test_partition_idxs[i]],
-                                                                    test_label[test_partition_idxs[i]]))
-        return train_partitions,test_partitions
-    else:
-        tr_data=[0]*num_parties
-        tr_label=[0]*num_parties
-        te_data=[0]*num_parties
-        te_label=[0]*num_parties
-        for i in range(num_parties):
-            tr_data[i]=train_data[train_partition_idxs[i]]
-            tr_label[i]=train_label[train_partition_idxs[i]]
-            te_data[i]=test_data[test_partition_idxs[i]]
-            te_label[i]=test_label[test_partition_idxs[i]]
-        return tr_data,tr_label,te_data,te_label,party_labels_list 
-
 def get_classes(data_label):
     l=[0]*10
     for _,i in data_label:
         l[np.argmax(i)] += 1
     return list(np.where(np.array(l)!=0)[0])     
-
-"""         feature distribution skew --->> noise_based feature imbalanced         """
-def Gaussian_noise(data,original_std,idx,num_parties,mean=0):   
-    """
-    for party idx :std = original_std*(idx/num_parties)
-    image data and noisy_image_data must be scaled in [0, 1] 
-    """
-    std=original_std*idx/num_parties
-    noisy_data=[]
-    noise=np.random.randn(*data.shape)*std+mean
-    for i in range(len(data)):
-        noisy=np.clip(noise+data[i],0,1)
-        noisy_data.append(noisy)
-    return np.array(noisy_data)
