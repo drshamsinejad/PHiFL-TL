@@ -1,7 +1,5 @@
 import numpy as np
 from model.initialize_model import create
-from sklearn.model_selection import train_test_split
-import tracemalloc
 import tensorflow as tf 
 
 class Client:    
