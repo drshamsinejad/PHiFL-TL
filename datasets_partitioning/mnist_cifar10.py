@@ -3,8 +3,7 @@ import random
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.keras.datasets import mnist
-from tensorflow.keras.datasets import cifar10
-from tensorflow.keras.datasets import cifar10
+from tensorflow.keras.datasets import cifar10 
 from tensorflow.keras.utils import to_categorical
 import sys
 
