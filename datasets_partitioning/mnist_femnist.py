@@ -3,7 +3,7 @@ import random
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.keras.datasets import mnist
-from tensorflow.keras.datasets import cifar10 
+from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 import sys
 
@@ -122,7 +122,7 @@ def iid_nequal_size_split(train_data,train_label,test_data,test_label,num_partie
     train_idx=list(range(len(train_data)))
     for i,size in enumerate(size_parties):
         indxs=np.random.choice(train_idx,size,replace=False)
-        partitions[i]=tf.data.Dataset.from_tensor_slices((train_data[indxs],train_label[indxs]))
+        train_partitions[i]=tf.data.Dataset.from_tensor_slices((train_data[indxs],train_label[indxs]))
         train_idx=list(set(train_idx)-set(indxs))
     test_size=int(test_num_samples/num_parties)
     test_idx=list(range(len(test_data)))
@@ -266,7 +266,7 @@ def Gaussian_noise(train_data,test_data,original_std,idx,num_parties,mean=0):
         #noise=np.random.randn(*train_data[i].shape)*std+mean
         test_noisy_data=np.clip(noise+test_data[i],0,1)
         noisy_test_list.append(test_noisy_data)
-    return noisy_train_list,noisy_test_list
+    return np.array(noisy_train_list),np.array(noisy_test_list)
     
 def random_edges(num_edges,num_clients):
     #randomly select clientsfor assign clients to edgesever 
