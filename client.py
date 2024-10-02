@@ -39,9 +39,10 @@ class Client:
     def send_to_edgeserver (self,edgeserver): 
         edgeserver.buffer[self.name]=self.model.get_weights()
         
-    def test(self):       
+    def test_c(self):       
         _,acc=self.model.evaluate(self.test)  
-        return np.round(acc,2)
+        acc=np.round(acc,2)
+        self.acc.append(acc)
    
     def m_compile(self,loss,optimizer,metrics):
         self.model.compile(loss=loss,optimizer=optimizer,metrics=metrics)
